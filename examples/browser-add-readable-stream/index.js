@@ -3,74 +3,67 @@
 /* global Ipfs */
 /* eslint-env browser */
 
-const repoPath = `ipfs-${Math.random()}`
-const ipfs = new Ipfs({ repo: repoPath })
-const { Buffer } = Ipfs
+const main = async () => {
+  const repoPath = `ipfs-${Math.random()}`
+  const ipfs = await Ipfs.create({ repo: repoPath })
 
-ipfs.on('ready', () => {
-  const directory = 'directory'
+  const directoryName = 'directory'
 
   // Our list of files
-  const files = createFiles(directory)
+  const inputFiles = createFiles(directoryName)
 
-  streamFiles(directory, files, (err, directoryHash) => {
-    if (err) {
-      return log(`There was an error adding the files ${err}`)
-    }
+  const directoryHash = await streamFiles(ipfs, directoryName, inputFiles)
 
-    ipfs.ls(directoryHash, (err, files) => {
-      if (err) {
-        return log(`There was an error listing the files ${err}`)
-      }
+  const fileList = await ipfs.ls(directoryHash)
 
-      log(`
---
+  log(`\n--\n\nDirectory contents:\n\n${directoryName}/ ${directoryHash}`)
 
-Directory contents:
-
-${directory}/ ${directoryHash}`)
-
-      files.forEach((file, index) => {
-        log(` ${index < files.length - 1 ? '\u251C' : '\u2514'}\u2500 ${file.name} ${file.path} ${file.hash}`)
-      })
-    })
+  fileList.forEach((file, index) => {
+    log(` ${index < fileList.length - 1 ? '\u251C' : '\u2514'}\u2500 ${file.name} ${file.path} ${file.hash}`)
   })
-})
+}
 
 const createFiles = (directory) => {
   return [{
     path: `${directory}/file1.txt`,
 
-    // content could be a stream, a url etc
-    content: Buffer.from('one', 'utf8')
+    // content could be a stream, a url, a Uint8Array, a File etc
+    content: 'one'
   }, {
     path: `${directory}/file2.txt`,
-    content: Buffer.from('two', 'utf8')
+    content: 'two'
   }, {
     path: `${directory}/file3.txt`,
-    content: Buffer.from('three', 'utf8')
+    content: 'three'
   }]
 }
 
-const streamFiles = (directory, files, cb) => {
+const streamFiles = async (ipfs, directory, files) => {
   // Create a stream to write files to
-  const stream = ipfs.addReadableStream()
-  stream.on('data', function (data) {
-    log(`Added ${data.path} hash: ${data.hash}`)
+  const stream = new ReadableStream({
+    start(controller) {
+      for (let i = 0; i < files.length; i++) {
+        // Add the files one by one
+        controller.enqueue(files[i])
+      }
 
-    // The last data event will contain the directory hash
-    if (data.path === directory) {
-      cb(null, data.hash)
+      // When we have no more files to add, close the stream
+      controller.close()
     }
   })
 
-  // Add the files one by one
-  files.forEach(file => stream.write(file))
+  const data = await ipfs.add(stream)
 
-  // When we have no more files to add, close the stream
-  stream.end()
+  log(`Added ${data.path} hash: ${data.hash}`)
+
+  // The last data event will contain the directory hash
+  if (data.path === directory) {
+    return data.cid
+  }
 }
 
 const log = (line) => {
   document.getElementById('output').appendChild(document.createTextNode(`${line}\r\n`))
 }
+
+main()

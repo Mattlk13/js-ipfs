@@ -4,19 +4,15 @@ const Libp2p = require('libp2p')
 const IPFS = require('ipfs')
 const TCP = require('libp2p-tcp')
 const MulticastDNS = require('libp2p-mdns')
-const WebSocketStar = require('libp2p-websocket-star')
 const Bootstrap = require('libp2p-bootstrap')
-const SPDY = require('libp2p-spdy')
 const KadDHT = require('libp2p-kad-dht')
-const MPLEX = require('pull-mplex')
-const SECIO = require('libp2p-secio')
-const assert = require('assert')
+const MPLEX = require('libp2p-mplex')
+const { NOISE } = require('libp2p-noise')
 
 /**
  * Options for the libp2p bundle
  * @typedef {Object} libp2pBundle~options
- * @property {PeerInfo} peerInfo - The PeerInfo of the IPFS node
- * @property {PeerBook} peerBook - The PeerBook of the IPFS node
+ * @property {PeerId} peerId - The PeerId of the IPFS node
  * @property {Object} config - The config of the IPFS node
  * @property {Object} options - The options given to the IPFS node
  */
@@ -29,19 +25,16 @@ const assert = require('assert')
  */
 const libp2pBundle = (opts) => {
   // Set convenience variables to clearly showcase some of the useful things that are available
-  const peerInfo = opts.peerInfo
-  const peerBook = opts.peerBook
+  const peerId = opts.peerId
   const bootstrapList = opts.config.Bootstrap
 
-  // Create our WebSocketStar transport and give it our PeerId, straight from the ipfs node
-  const wsstar = new WebSocketStar({
-    id: peerInfo.id
-  })
-
   // Build and return our libp2p node
-  return new Libp2p({
-    peerInfo,
-    peerBook,
+  // n.b. for full configuration options, see https://github.com/libp2p/js-libp2p/blob/master/doc/CONFIGURATION.md
+  return Libp2p.create({
+    peerId,
+    addresses: {
+      listen: ['/ip4/127.0.0.1/tcp/0']
+    },
     // Lets limit the connection managers peers and have it check peer health less frequently
     connectionManager: {
       minPeers: 25,
@@ -50,20 +43,17 @@ const libp2pBundle = (opts) => {
     },
     modules: {
       transport: [
-        TCP,
-        wsstar
+        TCP
       ],
       streamMuxer: [
-        MPLEX,
-        SPDY
+        MPLEX
       ],
       connEncryption: [
-        SECIO
+        NOISE
       ],
       peerDiscovery: [
         MulticastDNS,
-        Bootstrap,
-        wsstar.discovery
+        Bootstrap
       ],
       dht: KadDHT
     },
@@ -97,40 +87,49 @@ const libp2pBundle = (opts) => {
           timeout: 2e3 // End the query quickly since we're running so frequently
         }
       },
-      EXPERIMENTAL: {
-        pubsub: true
+      pubsub: {
+        enabled: true
       }
+    },
+    metrics: {
+      enabled: true,
+      computeThrottleMaxQueueSize: 1000,  // How many messages a stat will queue before processing
+      computeThrottleTimeout: 2000,       // Time in milliseconds a stat will wait, after the last item was added, before processing
+      movingAverageIntervals: [           // The moving averages that will be computed
+        60 * 1000, // 1 minute
+        5 * 60 * 1000, // 5 minutes
+        15 * 60 * 1000 // 15 minutes
+      ],
+      maxOldPeersRetention: 50            // How many disconnected peers we will retain stats for
     }
   })
 }
 
-// Now that we have our custom libp2p bundle, let's start up the ipfs node!
-const node = new IPFS({
-  libp2p: libp2pBundle
-})
-
-// Listen for the node to start, so we can log out some metrics
-node.once('start', (err) => {
-  assert.ifError(err, 'Should startup without issue')
+async function main () {
+  // Now that we have our custom libp2p bundle, let's start up the ipfs node!
+  const node = await IPFS.create({
+    libp2p: libp2pBundle
+  })
 
   // Lets log out the number of peers we have every 2 seconds
-  setInterval(() => {
-    node.swarm.peers((err, peers) => {
-      if (err) {
-        console.log('An error occurred trying to check our peers:', err)
-        process.exit(1)
-      }
+  setInterval(async () => {
+    try {
+      const peers = await node.swarm.peers()
       console.log(`The node now has ${peers.length} peers.`)
-    })
+    } catch (err) {
+      console.log('An error occurred trying to check our peers:', err)
+    }
   }, 2000)
 
   // Log out the bandwidth stats every 4 seconds so we can see how our configuration is doing
-  setInterval(() => {
-    node.stats.bw((err, stats) => {
-      if (err) {
-        console.log('An error occurred trying to check our stats:', err)
-      }
+  setInterval(async () => {
+    try {
+      const stats = await node.stats.bw()
       console.log(`\nBandwidth Stats: ${JSON.stringify(stats, null, 2)}\n`)
-    })
+    } catch (err) {
+      console.log('An error occurred trying to check our stats:', err)
+    }
   }, 4000)
-})
+}
+
+main()

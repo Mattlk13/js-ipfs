@@ -14,11 +14,11 @@
   </head>
   <body>
     <h1>JS IPFS - Add data to IPFS from the browser</h1>
-    <textarea id="source"></textarea>
-    <button id="store">add to ipfs</button>
-    <div>
+    <textarea id="source" placeholder="Enter some text here"></textarea>
+    <button id="store" style="display: none">Add text to ipfs</button>
+    <div id="output" style="display: none">
       <div>found in ipfs:</div>
-      <div class="content" id="hash">[ipfs hash]</div>
+      <div class="content" id="cid">[ipfs cid]</div>
       <div class="content" id="content">[ipfs content]</div>
     </div>
   </body>

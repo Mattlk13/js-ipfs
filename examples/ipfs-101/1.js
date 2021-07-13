@@ -1,22 +1,27 @@
 'use strict'
 
 const IPFS = require('ipfs')
+const all = require('it-all')
+const uint8ArrayConcat = require('uint8arrays/concat')
+const uint8ArrayFromString = require('uint8arrays/from-string')
+const uint8ArrayToString = require('uint8arrays/to-string')
 
-const node = new IPFS()
-
-node.on('ready', async () => {
+async function main () {
+  const node = await IPFS.create()
   const version = await node.version()
 
   console.log('Version:', version.version)
 
-  const filesAdded = await node.add({
+  const file = await node.add({
     path: 'hello.txt',
-    content: Buffer.from('Hello World 101')
+    content: uint8ArrayFromString('Hello World 101')
   })
 
-  console.log('Added file:', filesAdded[0].path, filesAdded[0].hash)
+  console.log('Added file:', file.path, file.cid.toString())
 
-  const fileBuffer = await node.cat(filesAdded[0].hash)
+  const data = uint8ArrayConcat(await all(node.cat(file.cid)))
 
-  console.log('Added file contents:', fileBuffer.toString())
-})
+  console.log('Added file contents:', uint8ArrayToString(data))
+}
+
+main()

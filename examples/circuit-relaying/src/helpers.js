@@ -1,13 +1,16 @@
 /* eslint-disable no-console */
 'use strict'
 
+const uint8ArrayToString = require('uint8arrays/to-string')
+
 const Room = require('ipfs-pubsub-room')
 const $message = document.querySelector('#message')
 const $msgs = document.querySelector('#msgs')
 const $addrs = document.querySelector('#addrs')
 const $peers = document.querySelector('#peers')
+const $pAddrs = document.querySelector('#peers-addrs')
 
-const NAMESPACE = `ipfs-quick-msg`
+const NAMESPACE = 'ipfs-quick-msg'
 
 const mkRoomName = (name) => {
   return `${NAMESPACE}-${name}`
@@ -15,7 +18,7 @@ const mkRoomName = (name) => {
 
 module.exports = (ipfs, peersSet) => {
   const createRoom = (name) => {
-    const room = Room(ipfs, mkRoomName(name))
+    const room = new Room(ipfs, mkRoomName(name))
 
     room.on('peer joined', (peer) => {
       console.log('peer ' + peer + ' joined')
@@ -31,9 +34,9 @@ module.exports = (ipfs, peersSet) => {
 
     // send and receive messages
     room.on('message', (message) => {
-      console.log('got message from ' + message.from + ': ' + message.data.toString())
-      const node = document.createElement(`li`)
-      node.innerText = `${message.from.substr(-4)}: ${message.data.toString()}`
+      console.log('got message from ' + message.from + ': ' + uint8ArrayToString(message.data))
+      const node = document.createElement('li')
+      node.innerText = `${message.from.substr(-4)}: ${uint8ArrayToString(message.data)}`
       $msgs.appendChild(node)
     })
 
@@ -53,22 +56,27 @@ module.exports = (ipfs, peersSet) => {
     const tags = Array.from(peersSet).map((p) => {
       return `<li>${p}</li>`
     })
-    $peers.innerHTML = tags
+    $peers.innerHTML = tags.join('')
   }
 
-  const updateAddrs = (addrs) => {
-    $addrs.innerHTML = `
-        <div>
-            <ul>
-                ${addrs.map((addr) => `<li>${addr.toString()}</li>`)}
-            <ul>
-        </div>`
+  const updateSwarmPeers = async (ipfs) => {
+    const peers = await ipfs.swarm.peers()
+
+    $pAddrs.innerHTML = peers.map(peer => `<li>${peer.peer}</li>`).join('')
+  }
+
+  const updateAddrs = async (ipfs) => {
+    const info = await ipfs.id()
+    const relayAddrs = []
+
+    $addrs.innerHTML = relayAddrs.map((addr) => `<li>${addr.toString()}</li>`).join('')
   }
 
   return {
     createRoom,
     sendMsg,
     updatePeers,
+    updateSwarmPeers,
     updateAddrs
   }
 }

@@ -1,15 +1,18 @@
 'use strict'
 
 const { app, BrowserWindow } = require('electron')
+const IPFS = require('ipfs')
 
 let mainWindow
 
 function createWindow () {
-  mainWindow = new BrowserWindow({ width: 800,
+  mainWindow = new BrowserWindow({
+    width: 800,
     height: 600,
     webPreferences: {
       nodeIntegration: true
-    } })
+    }
+  })
 
   // and load the index.html of the app.
   mainWindow.loadFile('index.html')
@@ -23,22 +26,16 @@ function createWindow () {
   })
 }
 
-app.on('ready', () => {
+app.on('ready', async () => {
   createWindow()
 
-  const IPFS = require('ipfs')
-  const node = new IPFS()
-  node.on('ready', () => {
-    node.id((err, id) => {
-      if (err) {
-        return console.log(err)
-      }
-      console.log(id)
-    })
-  })
-  node.on('error', (err) => {
-    return console.log(err)
-  })
+  try {
+    const node = await IPFS.create()
+    const id = await node.id()
+    console.log(id)
+  } catch (err) {
+    console.error(err)
+  }
 })
 
 // Quit when all windows are closed.

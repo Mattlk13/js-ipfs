@@ -1,23 +1,26 @@
 {
-  "name": "custom-libp2p",
-  "version": "0.1.0",
+  "name": "example-custom-libp2p",
   "description": "Customizing your libp2p node",
+  "version": "1.0.0",
   "main": "index.js",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "test-ipfs-example"
   },
   "license": "MIT",
   "dependencies": {
-    "ipfs": "file:../../",
-    "libp2p": "~0.25.0",
-    "libp2p-bootstrap": "~0.9.7",
-    "libp2p-kad-dht": "~0.15.0",
-    "libp2p-mdns": "~0.12.2",
-    "libp2p-secio": "~0.11.1",
-    "libp2p-spdy": "~0.13.3",
-    "libp2p-tcp": "~0.13.0",
-    "libp2p-websocket-star": "~0.10.2",
-    "pull-mplex": "~0.1.0"
+    "ipfs": "^0.55.4",
+    "libp2p": "^0.31.6",
+    "libp2p-bootstrap": "^0.12.3",
+    "libp2p-kad-dht": "^0.22.0",
+    "libp2p-mdns": "^0.16.0",
+    "libp2p-mplex": "^0.10.2",
+    "libp2p-noise": "^3.0.0",
+    "libp2p-tcp": "^0.15.4"
+  },
+  "devDependencies": {
+    "execa": "^5.0.0",
+    "test-ipfs-example": "^3.0.0"
   }
 }

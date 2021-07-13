@@ -2,37 +2,34 @@
 
 const IPFS = require('ipfs')
 
-const node = new IPFS({ repo: String(Math.random() + Date.now()) })
+document.addEventListener('DOMContentLoaded', async () => {
+  const node = await IPFS.create({
+    repo: String(Math.random() + Date.now()),
+    init: { alogorithm: 'ed25519' }
 
-node.once('ready', () => console.log('IPFS node is ready'))
+  })
+  const button = document.getElementById('store')
 
-function store () {
-  const toStore = document.getElementById('source').value
+  console.log('IPFS node is ready')
 
-  node.add(Buffer.from(toStore), (err, res) => {
-    if (err || !res) {
-      return console.error('ipfs add error', err, res)
+  async function store () {
+    const toStore = document.getElementById('source').value
+
+    const file = await node.add(toStore)
+
+    console.log('successfully stored', file.cid)
+
+    await display(file.cid)
+  }
+
+  async function display (cid) {
+    for await (const data of node.cat(cid)) {
+      document.getElementById('cid').innerText = cid
+      document.getElementById('content').innerText = new TextDecoder().decode(data)
+      document.getElementById('output').setAttribute('style', 'display: block')
     }
+  }
 
-    res.forEach((file) => {
-      if (file && file.hash) {
-        console.log('successfully stored', file.hash)
-        display(file.hash)
-      }
-    })
-  })
-}
-
-function display (hash) {
-  // buffer: true results in the returned result being a buffer rather than a stream
-  node.cat(hash, (err, data) => {
-    if (err) { return console.error('ipfs cat error', err) }
-
-    document.getElementById('hash').innerText = hash
-    document.getElementById('content').innerText = data
-  })
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('store').onclick = store
+  button.onclick = store
+  button.setAttribute('style', 'display: inline')
 })

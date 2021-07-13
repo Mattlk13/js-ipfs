@@ -1,22 +1,23 @@
 'use strict'
 
-const IPFS = require('../../src/core')
-// In your project, replace by the following line and install IPFS as a dep
-// const IPFS = require('ipfs')
+const IPFS = require('ipfs')
 
-function createNode (options, callback) {
-  if (typeof options === 'function') {
-    callback = options
-    options = {}
-  }
-
+function createNode (options) {
+  options = options || {}
   options.path = options.path || '/tmp/ipfs' + Math.random()
-
-  const node = new IPFS({
-    repo: options.path
+  return IPFS.create({
+    repo: options.path,
+    config: {
+      Addresses: {
+        Swarm: [
+          '/ip4/0.0.0.0/tcp/0'
+        ],
+        API: '/ip4/127.0.0.1/tcp/0',
+        Gateway: '/ip4/127.0.0.1/tcp/0'
+      }
+    },
+    ipld: options.ipld
   })
-
-  node.on('start', () => callback(null, node))
 }
 
 module.exports = createNode

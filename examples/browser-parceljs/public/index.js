@@ -1,35 +1,39 @@
-import 'babel-polyfill'
 import IPFS from 'ipfs'
+import uint8ArrayConcat from 'uint8arrays/concat'
+import uint8ArrayToString from 'uint8arrays/to-string'
 
-// IPFS node setup
-const node = new IPFS({ repo: String(Math.random() + Date.now()) })
+document.addEventListener('DOMContentLoaded', async () => {
+  // IPFS node setup
+  const node = await IPFS.create({ repo: String(Math.random() + Date.now()) })
 
-// UI elements
-const status = document.getElementById('status')
-const output = document.getElementById('output')
+  // UI elements
+  const status = document.getElementById('status')
+  const output = document.getElementById('output')
 
-output.textContent = ''
+  output.textContent = ''
 
-function log (txt) {
-  console.info(txt)
-  output.textContent += `${txt.trim()}\n`
-}
+  function log (txt) {
+    console.info(txt)
+    output.textContent += `${txt.trim()}\n`
+  }
 
-node.on('ready', async () => {
   status.innerText = 'Connected to IPFS :)'
 
   const version = await node.version()
 
   log(`The IPFS node version is ${version.version}`)
 
-  const filesAdded = await node.add({
+  const entry = await node.add({
     path: 'hello-parcel.txt',
-    content: Buffer.from('Hello from parcel.js bundled ipfs example')
+    content: 'Hello from parcel.js bundled ipfs example'
   })
+  log(`This page deployed ${entry.path} to IPFS and its CID is ${entry.cid}`)
 
-  log(`This page deployed ${filesAdded[0].path} to IPFS and its hash is ${filesAdded[0].hash}`)
+  const buffers = []
 
-  const fileBuffer = await node.cat(filesAdded[0].hash)
+  for await (const buf of node.cat(entry.cid)) {
+    buffers.push(buf)
+  }
 
-  log(`The contents of the file was: ${fileBuffer.toString()}`)
+  log(`The contents of the file was: ${uint8ArrayToString(uint8ArrayConcat(buffers))}`)
 })

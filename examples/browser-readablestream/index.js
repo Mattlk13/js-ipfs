@@ -2,9 +2,9 @@
 
 /* eslint-env browser */
 
-const Ipfs = require('../../')
-const videoStream = require('videostream')
-const ipfs = new Ipfs({ repo: 'ipfs-' + Math.random() })
+const Ipfs = require('ipfs')
+const VideoStream = require('videostream')
+const toStream = require('it-to-stream')
 const {
   dragDrop,
   statusMessages,
@@ -12,22 +12,24 @@ const {
   log
 } = require('./utils')
 
-log('IPFS: Initialising')
+document.addEventListener('DOMContentLoaded', async () => {
+  const ipfs = await Ipfs.create({ repo: 'ipfs-' + Math.random() })
 
-ipfs.on('ready', () => {
+  log('IPFS: Initialising')
+
   // Set up event listeners on the <video> element from index.html
   const videoElement = createVideoElement()
-  const hashInput = document.getElementById('hash')
+  const cidInput = document.getElementById('cid')
   const goButton = document.getElementById('gobutton')
   let stream
 
   goButton.onclick = function (event) {
     event.preventDefault()
 
-    log(`IPFS: Playing ${hashInput.value.trim()}`)
+    log(`IPFS: Playing ${cidInput.value.trim()}`)
 
     // Set up the video stream an attach it to our <video> element
-    videoStream({
+    const videoStream = new VideoStream({
       createReadStream: function createReadStream (opts) {
         const start = opts.start
 
@@ -45,10 +47,10 @@ ipfs.on('ready', () => {
         }
 
         // This stream will contain the requested bytes
-        stream = ipfs.catReadableStream(hashInput.value.trim(), {
+        stream = toStream.readable(ipfs.cat(cidInput.value.trim(), {
           offset: start,
           length: end && end - start
-        })
+        }))
 
         // Log error messages
         stream.on('error', (error) => log(error))
@@ -61,6 +63,8 @@ ipfs.on('ready', () => {
         return stream
       }
     }, videoElement)
+
+    videoElement.addEventListener('error', () => log(videoStream.detailedError))
   }
 
   // Allow adding files to IPFS via drag and drop
@@ -70,6 +74,6 @@ ipfs.on('ready', () => {
   log('IPFS: Drop an .mp4 file into this window to add a file')
   log('IPFS: Then press the "Go!" button to start playing a video')
 
-  hashInput.disabled = false
+  cidInput.disabled = false
   goButton.disabled = false
 })
